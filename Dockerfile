@@ -29,9 +29,11 @@ RUN python -m venv /app/backend/venv && \
 # Copy backend code
 COPY backend/src /app/backend/src
 
-# Create and set permissions for mitmproxy directory
+# Create and set permissions for required directories
 RUN mkdir -p /app/backend/src/api/mitmproxy && \
-    chmod 755 /app/backend/src/api/mitmproxy
+    mkdir -p /app/backend/src/api/sessions && \
+    chmod 755 /app/backend/src/api/mitmproxy && \
+    chmod 755 /app/backend/src/api/sessions
 
 # Set environment variables
 ENV PYTHONPATH=/app/backend/src
@@ -53,6 +55,9 @@ chmod +x /app/start.sh
 
 # Expose ports for frontend, backend API, and proxy
 EXPOSE 3001 8001 8080
+
+# Note: To persist proxy history between container restarts, mount a volume to /app/backend/src/api/sessions
+# Example: docker run -v ./sessions:/app/backend/src/api/sessions ...
 
 # Run the application
 CMD ["/app/start.sh"]

@@ -23,8 +23,11 @@ FART is a Man-in-the-Middle (MITM) proxy tool built with mitmproxy as the backen
 
 1. Start the application (choose one method):
    ```bash
-   # Using Docker
-   docker run -p 3001:3001 -p 8001:8001 -p 8080:8080 fart-proxy
+   # Using Docker with persistent proxy history
+   mkdir -p sessions  # Create a directory to store proxy history
+   docker run -p 3001:3001 -p 8001:8001 -p 8080:8080 \
+     -v $(pwd)/sessions:/app/backend/src/api/sessions \
+     fart-proxy
 
    # Or using run script
    ./run.sh
@@ -66,8 +69,16 @@ FART is a Man-in-the-Middle (MITM) proxy tool built with mitmproxy as the backen
 
 2. Run the container:
    ```bash
-   docker run -p 3001:3001 -p 8001:8001 -p 8080:8080 fart-proxy
+   # Create a directory for persistent proxy history
+   mkdir -p sessions
+
+   # Run with volume mount for persistent history
+   docker run -p 3001:3001 -p 8001:8001 -p 8080:8080 \
+     -v $(pwd)/sessions:/app/backend/src/api/sessions \
+     fart-proxy
    ```
+
+   Note: The volume mount (-v flag) ensures your proxy history persists between container restarts. Without it, your proxy history will be lost when the container stops.
 
 ### Manual Installation
 
@@ -178,6 +189,13 @@ openssl x509 -outform der -in ~/Library/Application\ Support/mitmproxy/mitmproxy
 2. Verify port mappings:
    ```bash
    docker ps
+   ```
+3. Check proxy history persistence:
+   ```bash
+   # Verify the sessions directory exists and has proper permissions
+   ls -la sessions/
+   # Check if history.json exists and is writable
+   ls -la sessions/history.json
    ```
 
 ## Development
