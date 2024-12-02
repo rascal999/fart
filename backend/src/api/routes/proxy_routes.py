@@ -23,10 +23,18 @@ def transform_log_for_display(entry: Dict[str, Any]) -> Dict[str, Any]:
         "method": entry.get("request", {}).get("method"),
         "url": entry.get("request", {}).get("url"),
         "status": entry.get("response", {}).get("status_code"),
-        "request_headers": entry.get("request", {}).get("headers"),
-        "request_content": entry.get("request", {}).get("content"),
-        "response_headers": entry.get("response", {}).get("headers"),
-        "response_content": entry.get("response", {}).get("content")
+        "content_length": entry.get("content_length"),
+        "request": {
+            "method": entry.get("request", {}).get("method"),
+            "url": entry.get("request", {}).get("url"),
+            "headers": entry.get("request", {}).get("headers", {}),
+            "content": entry.get("request", {}).get("content")
+        },
+        "response": {
+            "status_code": entry.get("response", {}).get("status_code"),
+            "headers": entry.get("response", {}).get("headers", {}),
+            "content": entry.get("response", {}).get("content")
+        }
     }
     logger.debug(f"Transformed entry for display: {json.dumps(transformed, indent=2)}")
     return transformed

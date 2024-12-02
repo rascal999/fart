@@ -47,10 +47,24 @@ async def test_get_proxy_logs_with_data(mock_history_path):
         assert response.media_type == "application/json"
         data = json.loads(response.body)["data"]
         assert len(data) == 1
-        assert data[0]["id"] == 1
-        assert data[0]["method"] == "GET"
-        assert data[0]["url"] == "http://example.com"
-        assert data[0]["status"] == 200
+        log = data[0]
+        
+        # Verify top-level fields
+        assert log["id"] == 1
+        assert log["method"] == "GET"
+        assert log["url"] == "http://example.com"
+        assert log["status"] == 200
+        
+        # Verify nested request object
+        assert log["request"]["method"] == "GET"
+        assert log["request"]["url"] == "http://example.com"
+        assert log["request"]["headers"] == {"User-Agent": "Test"}
+        assert log["request"]["content"] == "test content"
+        
+        # Verify nested response object
+        assert log["response"]["status_code"] == 200
+        assert log["response"]["headers"] == {"Content-Type": "text/plain"}
+        assert log["response"]["content"] == "response content"
 
 @pytest.mark.asyncio
 async def test_clear_proxy_logs(mock_history_path):

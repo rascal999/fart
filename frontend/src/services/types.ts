@@ -5,10 +5,18 @@ export interface ProxyLog {
   method: string;
   url: string;
   status?: number | "pending" | "error";
-  request_headers?: Record<string, string>;
-  request_content?: string;
-  response_headers?: Record<string, string>;
-  response_content?: string;
+  content_length?: number;
+  request?: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    content: string | null;
+  };
+  response?: {
+    status_code: number;
+    headers: Record<string, string>;
+    content: string | null;
+  };
   error?: string;
 }
 

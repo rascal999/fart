@@ -19,8 +19,8 @@ class ProxyService {
           method: log.method,
           url: log.url,
           status: log.status,
-          headers: log.request_headers,
-          content: log.request_content
+          headers: log.request?.headers,
+          content: log.request?.content || undefined // Convert null to undefined
         }
       }));
 

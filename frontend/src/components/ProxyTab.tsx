@@ -11,6 +11,7 @@ import { RepeaterActionsReturn } from '../hooks/useRepeaterActions';
 import { useProxyState } from '../hooks/useProxyState';
 import { useProxyLogs } from '../hooks/useProxyLogs';
 import { useProxySession } from '../hooks/useProxySession';
+import { useProxyTable } from './ProxyTable/useProxyTable';
 import ProxyNotifications from './ProxyNotifications';
 
 interface ProxyTabProps {
@@ -52,6 +53,8 @@ const ProxyTab: React.FC<ProxyTabProps> = ({ repeaterState, repeaterActions }) =
     importSession
   } = useProxySession(setError, setSuccess, fetchLogs);
 
+  const [tableState, tableHandlers] = useProxyTable();
+
   const handleSendToRepeater = useCallback((log: ProxyLog) => {
     try {
       // Stop polling before navigation
@@ -65,7 +68,7 @@ const ProxyTab: React.FC<ProxyTabProps> = ({ repeaterState, repeaterActions }) =
         method: log.method,
         url: log.url,
         headers: repeaterRequest.raw_request,
-        body: log.request_content || '',
+        body: log.request?.content || '',
         protocol: url.protocol.replace(':', '') as 'http' | 'https',
         host: url.hostname,
         port: url.port || (url.protocol === 'https:' ? '443' : '80')
@@ -114,6 +117,8 @@ const ProxyTab: React.FC<ProxyTabProps> = ({ repeaterState, repeaterActions }) =
         onImportSession={importSession}
         onClearLogs={clearLogs}
         isLoading={isLoading}
+        columns={tableState.columns}
+        onColumnVisibilityChange={tableHandlers.handleColumnVisibilityChange}
       />
       
       <ProxyTable
@@ -125,6 +130,8 @@ const ProxyTab: React.FC<ProxyTabProps> = ({ repeaterState, repeaterActions }) =
         onSelectLog={setSelectedLog}
         onSendToRepeater={handleSendToRepeater}
         onDelete={deleteLog}
+        tableState={tableState}
+        tableHandlers={tableHandlers}
       />
 
       {selectedLog && <ProxyDetails log={selectedLog} />}

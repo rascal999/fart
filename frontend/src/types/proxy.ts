@@ -4,11 +4,27 @@ export interface ProxyLog {
   method: string;
   url: string;
   status?: number | "pending" | "error";
-  request_headers?: Record<string, string>;
-  request_content?: string;
-  response_headers?: Record<string, string>;
-  response_content?: string;
-  error?: string;
+  content_length?: number;  // Made optional to maintain compatibility
+  request?: {
+    method: string;
+    url: string;
+    headers: Record<string, string>;
+    content: string | null;
+  };
+  response?: {
+    status_code: number;
+    headers: Record<string, string>;
+    content: string | null;
+  };
+}
+
+export interface Column {
+  id: string;
+  label: string;
+  width: number;
+  sortable: boolean;
+  visible: boolean;
+  priority?: boolean;
 }
 
 export interface ProxyToolbarProps {
@@ -18,6 +34,8 @@ export interface ProxyToolbarProps {
   isLoading: boolean;
   filter: string;
   onFilterChange: (filter: string) => void;
+  columns: Column[];
+  onColumnVisibilityChange: (columnId: string, visible: boolean) => void;
 }
 
 export interface ProxyDetailsProps {
@@ -32,7 +50,8 @@ export interface ProxyTableProps {
   sortColumn: SortColumn;
   sortDirection: SortDirection;
   onSort: (column: SortColumn) => void;
+  onDelete: (log: ProxyLog) => void;
 }
 
-export type SortColumn = 'id' | 'timestamp' | 'method' | 'url' | 'status';
+export type SortColumn = 'id' | 'timestamp' | 'method' | 'url' | 'status' | 'content_length';
 export type SortDirection = 'asc' | 'desc';

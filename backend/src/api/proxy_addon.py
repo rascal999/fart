@@ -106,10 +106,41 @@ class ProxyAddon:
             history = self._load_history()
             logger.debug(f"Loaded existing history with {len(history)} entries")
             
+            # Debug response content
+            logger.debug(f"Response has content: {flow.response.content is not None}")
+            if flow.response.content:
+                logger.debug(f"Response content length: {len(flow.response.content)} bytes")
+                logger.debug(f"Response content type: {type(flow.response.content)}")
+            
+            # Debug content-length header
+            if 'content-length' in flow.response.headers:
+                logger.debug(f"Content-Length header value: {flow.response.headers['content-length']}")
+            else:
+                logger.debug("No Content-Length header present")
+            
+            # Get content length from actual response content first
+            content_length = None
+            if flow.response.content:
+                content_length = len(flow.response.content)
+                logger.debug(f"Using actual response content length: {content_length}")
+            elif 'content-length' in flow.response.headers:
+                try:
+                    content_length = int(flow.response.headers['content-length'])
+                    logger.debug(f"Using Content-Length header value: {content_length}")
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Invalid content-length header value: {e}")
+                    content_length = None
+            
+            logger.debug(f"Final content_length value: {content_length}")
+            
             # Create entry for the request/response pair
             entry = {
                 "id": self._get_next_id(history),
                 "timestamp": request_details["timestamp"],  # Use timestamp from request
+                "method": request_details["method"],
+                "url": request_details["url"],
+                "status": flow.response.status_code,
+                "content_length": content_length,
                 "request": {
                     "method": request_details["method"],
                     "url": request_details["url"],
@@ -123,7 +154,7 @@ class ProxyAddon:
                 }
             }
             
-            logger.debug(f"Created new entry with ID {entry['id']}")
+            logger.debug(f"Created new entry with ID {entry['id']} and content_length {entry['content_length']}")
             
             # Add to history and save
             history.append(entry)

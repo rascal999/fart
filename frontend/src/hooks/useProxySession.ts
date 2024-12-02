@@ -23,17 +23,60 @@ const isValidSettings = (settings: any): settings is Settings => {
 };
 
 const isValidProxyLog = (log: any): log is ProxyLog => {
-  return typeof log === 'object' && log !== null &&
-    typeof log.id === 'number' &&
-    typeof log.timestamp === 'string' &&
-    typeof log.method === 'string' &&
-    typeof log.url === 'string' &&
-    (log.status === undefined || typeof log.status === 'number' || log.status === 'pending' || log.status === 'error') &&
-    (log.request_headers === undefined || (typeof log.request_headers === 'object' && log.request_headers !== null)) &&
-    (log.request_content === undefined || typeof log.request_content === 'string') &&
-    (log.response_headers === undefined || (typeof log.response_headers === 'object' && log.response_headers !== null)) &&
-    (log.response_content === undefined || typeof log.response_content === 'string') &&
-    (log.error === undefined || typeof log.error === 'string');
+  // Validate required fields
+  if (!(typeof log === 'object' && log !== null &&
+        typeof log.id === 'number' &&
+        typeof log.timestamp === 'string')) {
+    return false;
+  }
+
+  // Validate method and url (can be at top level or in request object)
+  const hasTopLevelMethod = typeof log.method === 'string';
+  const hasTopLevelUrl = typeof log.url === 'string';
+  const hasRequestMethodUrl = log.request && 
+    typeof log.request.method === 'string' &&
+    typeof log.request.url === 'string';
+
+  if (!((hasTopLevelMethod && hasTopLevelUrl) || hasRequestMethodUrl)) {
+    return false;
+  }
+
+  // Validate optional fields
+  if (log.status !== undefined && 
+      !(typeof log.status === 'number' || log.status === 'pending' || log.status === 'error')) {
+    return false;
+  }
+
+  if (log.content_length !== undefined && typeof log.content_length !== 'number') {
+    return false;
+  }
+
+  if (log.error !== undefined && typeof log.error !== 'string') {
+    return false;
+  }
+
+  // Validate optional request object
+  if (log.request !== undefined) {
+    if (!(typeof log.request === 'object' && log.request !== null &&
+          typeof log.request.method === 'string' &&
+          typeof log.request.url === 'string' &&
+          typeof log.request.headers === 'object' && log.request.headers !== null &&
+          (log.request.content === null || typeof log.request.content === 'string'))) {
+      return false;
+    }
+  }
+
+  // Validate optional response object
+  if (log.response !== undefined) {
+    if (!(typeof log.response === 'object' && log.response !== null &&
+          typeof log.response.status_code === 'number' &&
+          typeof log.response.headers === 'object' && log.response.headers !== null &&
+          (log.response.content === null || typeof log.response.content === 'string'))) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 const isValidSessionData = (data: any): data is SessionData => {

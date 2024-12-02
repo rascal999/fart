@@ -14,22 +14,47 @@ logger = logging.getLogger(__name__)
 def transform_log_for_storage(log):
     """Transform a log entry to the storage format"""
     logger.debug(f"Transforming log entry: {json.dumps(log, indent=2)}")
-    transformed = {
-        "id": log["id"],
-        "timestamp": log["timestamp"],
-        "request": {
-            "method": log["method"],
-            "url": log["url"],
-            "headers": log["request_headers"],
-            "content": log["request_content"],
-            "timestamp": log["timestamp"]
-        },
-        "response": {
-            "status_code": log["status"],
-            "headers": log["response_headers"],
-            "content": log["response_content"]
+    
+    # Handle both nested and flat structures
+    if "request" in log and "response" in log:
+        # Already in nested format
+        transformed = {
+            "id": log["id"],
+            "timestamp": log["timestamp"],
+            "content_length": log.get("content_length"),  # Preserve content_length
+            "request": {
+                "method": log["request"]["method"],
+                "url": log["request"]["url"],
+                "headers": log["request"]["headers"],
+                "content": log["request"]["content"],
+                "timestamp": log["timestamp"]
+            },
+            "response": {
+                "status_code": log["response"]["status_code"],
+                "headers": log["response"]["headers"],
+                "content": log["response"]["content"]
+            }
         }
-    }
+    else:
+        # Convert from flat format
+        transformed = {
+            "id": log["id"],
+            "timestamp": log["timestamp"],
+            "content_length": log.get("content_length"),  # Preserve content_length
+            "request": {
+                "method": log["method"],
+                "url": log["url"],
+                "headers": log["request_headers"],
+                "content": log["request_content"],
+                "timestamp": log["timestamp"]
+            },
+            "response": {
+                "status_code": log["status"],
+                "headers": log["response_headers"],
+                "content": log["response_content"]
+            }
+        }
+    
     logger.debug(f"Transformed log entry: {json.dumps(transformed, indent=2)}")
     return transformed
 
@@ -100,13 +125,18 @@ async def import_session(data: dict):
             
             # Write logs to history file
             try:
+                # First verify we can write by creating a JSON string
+                json_data = json.dumps(storage_logs, indent=2)
+                
+                # Then write to file
                 with open(HISTORY_FILE, 'w') as f:
-                    json.dump(storage_logs, f, indent=2)
+                    f.write(json_data)
                 logger.debug(f"Wrote {len(storage_logs)} logs to history file: {HISTORY_FILE}")
                 
                 # Verify the write by reading back
                 with open(HISTORY_FILE, 'r') as f:
-                    saved_logs = json.load(f)
+                    saved_data = f.read()
+                    saved_logs = json.loads(saved_data)
                     logger.debug(f"Verified {len(saved_logs)} logs in history file")
             except Exception as e:
                 logger.error(f"Error writing to history file: {str(e)}")

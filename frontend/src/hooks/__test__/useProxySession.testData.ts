@@ -9,8 +9,24 @@ export const validSessionData: SessionData = {
       method: 'GET',
       url: 'http://example.com',
       status: 200,
-      request_headers: {},
-      response_headers: {}
+      content_length: 1024,
+      request: {
+        method: 'GET',
+        url: 'http://example.com',
+        headers: {
+          'User-Agent': 'Test Browser',
+          'Accept': '*/*'
+        },
+        content: null
+      },
+      response: {
+        status_code: 200,
+        headers: {
+          'Content-Type': 'text/plain',
+          'Content-Length': '1024'
+        },
+        content: null
+      }
     }
   ],
   settings: {

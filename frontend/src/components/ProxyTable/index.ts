@@ -1,9 +1,5 @@
 export { ProxyTable } from './ProxyTable';
-export type { 
-  Column,
-  ProxyTableState,
-  ResizeHandlers,
-  ProxyTableHandlers,
-  ProxyTableProps,
-  SortColumn 
-} from './types';
+export { ProxyTableContextMenu } from './ProxyTableContextMenu';
+export { ProxyTableHeader } from './ProxyTableHeader';
+export { ProxyTableRow } from './ProxyTableRow';
+export * from './types';
