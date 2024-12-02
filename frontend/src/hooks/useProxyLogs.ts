@@ -25,13 +25,33 @@ export const useProxyLogs = (
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isPollingEnabled = useRef(true);
   const location = useLocation();
+  const lastFetchTime = useRef<number>(0);
 
   const fetchLogs = useCallback(async () => {
+    // Debug logging
+    console.log('Fetching logs:', {
+      pathname: location.pathname,
+      isPollingEnabled: isPollingEnabled.current,
+      lastFetchTime: new Date(lastFetchTime.current).toISOString()
+    });
+
     // Skip if not on proxy tab
-    if (location.pathname !== '/') return;
+    if (location.pathname !== '/') {
+      console.log('Skipping fetch - not on proxy tab');
+      return;
+    }
+
+    // Throttle requests to prevent overwhelming the server
+    const now = Date.now();
+    if (now - lastFetchTime.current < 1000) { // Minimum 1 second between requests
+      console.log('Throttling fetch request');
+      return;
+    }
+    lastFetchTime.current = now;
 
     // Cancel any in-flight request
     if (abortControllerRef.current) {
+      console.log('Aborting previous request');
       abortControllerRef.current.abort();
     }
 
@@ -39,11 +59,19 @@ export const useProxyLogs = (
     abortControllerRef.current = new AbortController();
 
     try {
-      if (!isPollingEnabled.current) return;
+      if (!isPollingEnabled.current) {
+        console.log('Polling is disabled, skipping fetch');
+        return;
+      }
 
+      setIsLoading(true);
       const response = await proxyService.getLogs();
+      
       if (isPollingEnabled.current && location.pathname === '/') {
+        console.log('Setting logs:', response.data);
         setLogs(response.data);
+      } else {
+        console.log('Skipping log update - polling disabled or route changed');
       }
     } catch (error: any) {
       if (error?.name !== 'AbortError' && location.pathname === '/') {
@@ -51,18 +79,21 @@ export const useProxyLogs = (
         setError(error?.message || 'Failed to fetch logs');
       }
     } finally {
+      setIsLoading(false);
       abortControllerRef.current = null;
     }
   }, [setError, location.pathname]);
 
   const clearLogs = useCallback(async () => {
     try {
+      console.log('Clearing logs');
       setIsLoading(true);
       await proxyService.clearLogs();
       setLogs([]);
       setSelectedLog(null);
       setSuccess('Logs cleared successfully');
     } catch (error: any) {
+      console.error('Error clearing logs:', error);
       setError(error?.message || 'Failed to clear logs');
     } finally {
       setIsLoading(false);
@@ -71,6 +102,7 @@ export const useProxyLogs = (
 
   const deleteLog = useCallback(async (log: ProxyLog) => {
     try {
+      console.log('Deleting log:', log.id);
       setIsLoading(true);
       await proxyService.deleteLog(log.id);
       setLogs(prevLogs => prevLogs.filter(l => l.id !== log.id));
@@ -87,6 +119,7 @@ export const useProxyLogs = (
   }, [setError, setSuccess, setSelectedLog, selectedLog]);
 
   const stopPolling = useCallback(() => {
+    console.log('Stopping polling');
     isPollingEnabled.current = false;
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
@@ -99,15 +132,27 @@ export const useProxyLogs = (
   }, []);
 
   const startPolling = useCallback(() => {
+    console.log('Starting polling:', {
+      currentlyEnabled: isPollingEnabled.current,
+      pathname: location.pathname
+    });
+    
     if (!isPollingEnabled.current && location.pathname === '/') {
       isPollingEnabled.current = true;
+      // Immediate fetch
       fetchLogs();
+      // Start interval
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
       pollingIntervalRef.current = setInterval(fetchLogs, 2000);
+      console.log('Polling started');
     }
   }, [fetchLogs, location.pathname]);
 
   // Handle route changes
   useEffect(() => {
+    console.log('Route changed:', location.pathname);
     if (location.pathname === '/') {
       startPolling();
     } else {
@@ -115,12 +160,17 @@ export const useProxyLogs = (
     }
   }, [location.pathname, startPolling, stopPolling]);
 
-  // Cleanup on unmount
+  // Start polling on mount if we're on the proxy tab
   useEffect(() => {
+    console.log('Component mounted');
+    if (location.pathname === '/') {
+      startPolling();
+    }
     return () => {
+      console.log('Component unmounting');
       stopPolling();
     };
-  }, [stopPolling]);
+  }, [location.pathname, startPolling, stopPolling]);
 
   return {
     logs,

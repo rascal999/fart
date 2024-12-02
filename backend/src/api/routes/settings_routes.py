@@ -41,8 +41,8 @@ async def update_settings(new_settings: SettingsUpdate = Body(...)):
     old_settings = await get_settings()
     
     try:
-        # Update settings
-        for key, value in new_settings.dict(exclude_unset=True).items():
+        # Update settings using model_dump instead of dict
+        for key, value in new_settings.model_dump(exclude_unset=True).items():
             if hasattr(settings, key):
                 setattr(settings, key, value)
         

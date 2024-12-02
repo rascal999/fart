@@ -1,6 +1,11 @@
 # Build stage for frontend
 FROM node:18-alpine as frontend-builder
 WORKDIR /app/frontend
+
+# Set environment variables for frontend build
+ENV REACT_APP_API_HOST=localhost
+ENV REACT_APP_API_PORT=8001
+
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
@@ -45,7 +50,7 @@ ENV FART_PROXY_HOST=0.0.0.0
 # Create a startup script
 RUN echo '#!/bin/bash\n\
 # Start the frontend\n\
-serve -s /app/frontend/build -l 3001 &\n\
+REACT_APP_API_HOST=localhost REACT_APP_API_PORT=8001 serve -s /app/frontend/build -l 3001 &\n\
 \n\
 # Start the backend\n\
 cd /app/backend/src/api && \

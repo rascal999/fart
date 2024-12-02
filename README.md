@@ -23,13 +23,16 @@ FART is a Man-in-the-Middle (MITM) proxy tool built with mitmproxy as the backen
 
 1. Start the application (choose one method):
    ```bash
-   # Using Docker with persistent proxy history
-   mkdir -p sessions  # Create a directory to store proxy history
-   docker run -p 3001:3001 -p 8001:8001 -p 8080:8080 \
+   # Using Docker script (recommended)
+   ./run-docker.sh
+
+   # Or manually with Docker
+   mkdir -p sessions  # Create directory for persistent proxy history
+   docker run --rm --init --sig-proxy=false -p 3001:3001 -p 8001:8001 -p 8080:8080 \
      -v $(pwd)/sessions:/app/backend/src/api/sessions \
      fart-proxy
 
-   # Or using run script
+   # Or using run script for local development
    ./run.sh
    ```
 
@@ -69,16 +72,28 @@ FART is a Man-in-the-Middle (MITM) proxy tool built with mitmproxy as the backen
 
 2. Run the container:
    ```bash
-   # Create a directory for persistent proxy history
+   # Create directory for persistent proxy history
    mkdir -p sessions
 
-   # Run with volume mount for persistent history
-   docker run -p 3001:3001 -p 8001:8001 -p 8080:8080 \
+   # Basic run with volume mount for persistent history
+   docker run --rm --init --sig-proxy=false -p 3001:3001 -p 8001:8001 -p 8080:8080 \
      -v $(pwd)/sessions:/app/backend/src/api/sessions \
+     fart-proxy
+
+   # Or with explicit API host configuration (if needed)
+   docker run --rm --init --sig-proxy=false -p 3001:3001 -p 8001:8001 -p 8080:8080 \
+     -v $(pwd)/sessions:/app/backend/src/api/sessions \
+     -e REACT_APP_API_HOST=localhost \
+     -e REACT_APP_API_PORT=8001 \
      fart-proxy
    ```
 
-   Note: The volume mount (-v flag) ensures your proxy history persists between container restarts. Without it, your proxy history will be lost when the container stops.
+   Note: 
+   - The volume mount (-v flag) ensures your proxy history persists between container restarts
+   - The environment variables are optional and only needed if you're running behind a reverse proxy or need to specify a different API host
+   - The --init flag ensures proper signal handling
+   - The --sig-proxy=false flag prevents signal proxying for clean container shutdown
+   - The --rm flag automatically removes the container when it stops
 
 ### Manual Installation
 
@@ -197,6 +212,10 @@ openssl x509 -outform der -in ~/Library/Application\ Support/mitmproxy/mitmproxy
    # Check if history.json exists and is writable
    ls -la sessions/history.json
    ```
+4. If proxy history isn't showing:
+   - Ensure the sessions volume is mounted correctly
+   - Check the browser console for any API connection errors
+   - Verify the container can write to the sessions directory
 
 ## Development
 

@@ -1,24 +1,61 @@
 import logging
 import subprocess
 import os
+from pathlib import Path
 from api.config import settings
 
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class ProxyServer:
     def __init__(self):
         self.process = None
+        # Get the absolute path to the current directory
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        # Define sessions directory
+        self.sessions_dir = os.path.join(self.current_dir, "sessions")
+        # Define paths
+        self.addon_path = os.path.join(self.current_dir, "proxy_addon.py")
+        self.log_path = os.path.join(self.sessions_dir, "mitmproxy.log")
+        self.history_path = os.path.join(self.sessions_dir, "history.json")
+
+    def _initialize_directories(self):
+        """Initialize required directories and files."""
+        try:
+            # Create sessions directory with proper permissions
+            os.makedirs(self.sessions_dir, mode=0o755, exist_ok=True)
+            logger.debug(f"Sessions directory initialized at: {self.sessions_dir}")
+            
+            # Create empty history.json if it doesn't exist
+            if not os.path.exists(self.history_path):
+                with open(self.history_path, 'w') as f:
+                    f.write('[]')
+                logger.debug(f"Created empty history file at: {self.history_path}")
+            
+            # Set proper permissions on history file
+            os.chmod(self.history_path, 0o644)
+            logger.debug(f"Set permissions on history file: {oct(os.stat(self.history_path).st_mode)[-3:]}")
+            
+            # Verify files and permissions
+            logger.debug(f"Sessions dir exists: {os.path.exists(self.sessions_dir)}")
+            logger.debug(f"Sessions dir permissions: {oct(os.stat(self.sessions_dir).st_mode)[-3:]}")
+            logger.debug(f"History file exists: {os.path.exists(self.history_path)}")
+            logger.debug(f"History file permissions: {oct(os.stat(self.history_path).st_mode)[-3:]}")
+            
+        except Exception as e:
+            logger.error(f"Error initializing directories: {str(e)}", exc_info=True)
+            raise
 
     def start(self):
         """Start mitmproxy binary."""
         try:
-            # Get the absolute path to the addon script
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            addon_path = os.path.join(current_dir, "proxy_addon.py")
+            # Initialize directories and files
+            self._initialize_directories()
             
             # Ensure the addon script exists
-            if not os.path.exists(addon_path):
-                raise FileNotFoundError(f"Addon script not found at: {addon_path}")
+            if not os.path.exists(self.addon_path):
+                raise FileNotFoundError(f"Addon script not found at: {self.addon_path}")
             
             cmd = [
                 "mitmdump",
@@ -27,7 +64,8 @@ class ProxyServer:
                 "--ssl-insecure",
                 "--set", "console_eventlog_verbosity=debug",
                 "--set", "termlog_verbosity=debug",
-                "-s", addon_path
+                "--set", "flow_detail=3",  # Increase flow detail for better debugging
+                "-s", self.addon_path
             ]
 
             # Add upstream proxy configuration if enabled
@@ -43,20 +81,25 @@ class ProxyServer:
             
             logger.info(f"Starting mitmproxy: {' '.join(cmd)}")
             
-            # Create log file for mitmproxy output
-            log_path = os.path.join(current_dir, "sessions", "mitmproxy.log")
-            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            # Open log file with line buffering
+            log_file = open(self.log_path, 'w', buffering=1)
             
-            with open(log_path, 'w') as log_file:
-                self.process = subprocess.Popen(
-                    cmd,
-                    stdout=log_file,
-                    stderr=log_file,
-                    universal_newlines=True
-                )
+            self.process = subprocess.Popen(
+                cmd,
+                stdout=log_file,
+                stderr=log_file,
+                universal_newlines=True
+            )
             
             logger.info(f"Mitmproxy started with PID: {self.process.pid}")
-            logger.info(f"Mitmproxy logs available at: {log_path}")
+            logger.info(f"Mitmproxy logs available at: {self.log_path}")
+            
+            # Verify process is running
+            if self.process.poll() is None:
+                logger.info("Mitmproxy process is running")
+            else:
+                logger.error(f"Mitmproxy process failed to start. Exit code: {self.process.poll()}")
+                raise Exception("Failed to start mitmproxy process")
             
         except Exception as e:
             logger.error(f"Failed to start mitmproxy: {str(e)}", exc_info=True)

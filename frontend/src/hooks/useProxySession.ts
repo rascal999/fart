@@ -14,7 +14,12 @@ const isValidSettings = (settings: any): settings is Settings => {
     typeof settings.debug_level === 'string' &&
     typeof settings.enable_filtering === 'boolean' &&
     Array.isArray(settings.filter_rules) &&
-    typeof settings.upstream_proxy_enabled === 'boolean';
+    typeof settings.upstream_proxy_enabled === 'boolean' &&
+    (settings.upstream_proxy_host === null || typeof settings.upstream_proxy_host === 'string') &&
+    (settings.upstream_proxy_port === null || typeof settings.upstream_proxy_port === 'number') &&
+    typeof settings.upstream_proxy_auth === 'boolean' &&
+    (settings.upstream_proxy_username === null || typeof settings.upstream_proxy_username === 'string') &&
+    (settings.upstream_proxy_password === null || typeof settings.upstream_proxy_password === 'string');
 };
 
 const isValidProxyLog = (log: any): log is ProxyLog => {
@@ -22,7 +27,13 @@ const isValidProxyLog = (log: any): log is ProxyLog => {
     typeof log.id === 'number' &&
     typeof log.timestamp === 'string' &&
     typeof log.method === 'string' &&
-    typeof log.url === 'string';
+    typeof log.url === 'string' &&
+    (log.status === undefined || typeof log.status === 'number' || log.status === 'pending' || log.status === 'error') &&
+    (log.request_headers === undefined || (typeof log.request_headers === 'object' && log.request_headers !== null)) &&
+    (log.request_content === undefined || typeof log.request_content === 'string') &&
+    (log.response_headers === undefined || (typeof log.response_headers === 'object' && log.response_headers !== null)) &&
+    (log.response_content === undefined || typeof log.response_content === 'string') &&
+    (log.error === undefined || typeof log.error === 'string');
 };
 
 const isValidSessionData = (data: any): data is SessionData => {
@@ -63,34 +74,42 @@ export const useProxySession = (
       input.accept = '.json';
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = async (e) => {
-            try {
-              const data = JSON.parse(e.target?.result as string);
-              
-              if (!isValidSessionData(data)) {
-                setError('Failed to import session: Invalid session data structure');
-                return;
-              }
+        if (!file) return;
 
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const content = e.target?.result as string;
+            const data = JSON.parse(content);
+            
+            if (!isValidSessionData(data)) {
+              setError('Failed to import session: Invalid session data structure');
+              return;
+            }
+
+            try {
               await sessionService.importSession(data);
               await fetchLogs();
               setSuccess('Session imported successfully');
             } catch (err) {
-              if (err instanceof SyntaxError) {
-                setError('Failed to import session: Invalid JSON format');
-              } else {
-                setError('Failed to import session: ' + (err instanceof Error ? err.message : 'Unknown error'));
-              }
+              const message = err instanceof Error ? err.message : 'Unknown error';
+              setError(`Failed to import session: ${message}`);
             }
-          };
-          reader.readAsText(file);
-        }
+          } catch (err) {
+            if (err instanceof SyntaxError) {
+              setError('Failed to import session: Invalid JSON format');
+            } else {
+              const message = err instanceof Error ? err.message : 'Unknown error';
+              setError(`Failed to import session: ${message}`);
+            }
+          }
+        };
+        reader.readAsText(file);
       };
       input.click();
     } catch (err) {
-      setError('Failed to import session');
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Failed to import session: ${message}`);
     }
   }, [setError, setSuccess, fetchLogs]);
 
