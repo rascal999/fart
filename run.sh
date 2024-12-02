@@ -71,7 +71,8 @@ export PYTHONUNBUFFERED=1
 export FART_DEBUG_LEVEL=DEBUG
 
 # Start backend with increased verbosity
-python -m api.main --log-level debug &
+log "Starting backend with debug logging..."
+python -m api.main --log-level debug 2>&1 | tee backend.log &
 BACKEND_PID=$!
 
 # Start the frontend
@@ -81,16 +82,30 @@ cd ../../frontend
 # Install frontend dependencies if needed
 if [ ! -d "node_modules" ]; then
     log "Installing frontend dependencies..."
-    npm install
+    npm install 2>&1 | tee npm-install.log
+    log "Frontend dependencies installation completed"
 fi
 
-# Start frontend with debug output
-PORT=3001 DEBUG=* npm start &
+# Set environment variables for React build
+export GENERATE_SOURCEMAP=true
+export TSC_COMPILE_ON_ERROR=true
+export BABEL_ENV=development
+export NODE_ENV=development
+# Reduce Babel logging verbosity
+export DEBUG='!babel:*'
+
+# Start frontend with filtered logging
+log "Starting frontend with filtered logging..."
+PORT=3001 BROWSER=none npm start 2>&1 | grep -v "babel" | tee frontend.log &
 FRONTEND_PID=$!
 
 log "Application is starting..."
 log "Backend URL: http://127.0.0.1:8001"
 log "Frontend URL: http://127.0.0.1:3001"
+log "Log files:"
+log "- Backend log: backend/src/backend.log"
+log "- Frontend log: frontend/frontend.log"
+log "- NPM install log: frontend/npm-install.log"
 
 # Wait for both processes
 wait $BACKEND_PID $FRONTEND_PID

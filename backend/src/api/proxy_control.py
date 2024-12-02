@@ -22,3 +22,12 @@ def stop_proxy():
 def restart_proxy():
     """Restart the proxy server."""
     _proxy_manager.restart()
+
+def delete_log(log_id: int):
+    """Delete a specific log entry from the proxy addon."""
+    try:
+        _proxy_manager.delete_log(log_id)
+        logger.debug(f"Deleted log {log_id} through proxy control")
+    except Exception as e:
+        logger.error(f"Error deleting log through proxy control: {e}")
+        raise

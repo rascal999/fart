@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 
 class ProxyAddon:
     def __init__(self):
-        self.history = []
         # Use absolute path for history file
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.history_file = Path(os.path.join(current_dir, "sessions", "history.json"))
@@ -25,31 +24,34 @@ class ProxyAddon:
             with open(self.history_file, 'w') as f:
                 json.dump([], f)
             logger.debug("Created new history file")
-        
-        self._load_history()
 
     def _load_history(self):
-        """Load history from file if it exists."""
+        """Load history from file."""
         try:
-            with open(self.history_file, 'r') as f:
-                self.history = json.load(f)
-            logger.debug(f"Loaded {len(self.history)} entries from history")
+            if self.history_file.exists():
+                with open(self.history_file, 'r') as f:
+                    history = json.load(f)
+                logger.debug(f"Loaded {len(history)} entries from history")
+                return history
+            return []
         except Exception as e:
             logger.error(f"Error loading history: {e}")
-            self.history = []
-            # Reset history file
-            with open(self.history_file, 'w') as f:
-                json.dump([], f)
-            logger.debug("Reset history file due to error")
+            return []
 
-    def _save_history(self):
+    def _save_history(self, history):
         """Save history to file."""
         try:
             with open(self.history_file, 'w') as f:
-                json.dump(self.history, f, indent=2)
-            logger.debug(f"Saved {len(self.history)} entries to history")
+                json.dump(history, f, indent=2)
+            logger.debug(f"Saved {len(history)} entries to history")
         except Exception as e:
             logger.error(f"Error saving history: {e}")
+
+    def _get_next_id(self, history):
+        """Get next available ID based on highest existing ID."""
+        if not history:
+            return 1
+        return max(log.get('id', 0) for log in history) + 1
 
     def request(self, flow):
         """Handle request."""
@@ -83,9 +85,12 @@ class ProxyAddon:
                     "timestamp": datetime.now().isoformat()  # Fallback timestamp
                 }
             
+            # Load current history
+            history = self._load_history()
+            
             # Create entry for the request/response pair
             entry = {
-                "id": len(self.history) + 1,
+                "id": self._get_next_id(history),
                 "timestamp": request_details["timestamp"],  # Use timestamp from request
                 "request": {
                     "method": request_details["method"],
@@ -100,9 +105,9 @@ class ProxyAddon:
                 }
             }
             
-            # Add to history
-            self.history.append(entry)
-            self._save_history()
+            # Add to history and save
+            history.append(entry)
+            self._save_history(history)
             
             logger.debug(f"Added entry to history: {entry['id']} - {entry['request']['method']} {entry['request']['url']}")
             

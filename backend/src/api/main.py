@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Path, Body
+from fastapi import FastAPI, Path, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
@@ -21,12 +21,19 @@ from api.routes.repeater_routes import RepeaterRequest
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,  # Set default level to INFO
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler()
     ]
 )
+
+# Set specific loggers to appropriate levels
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+logging.getLogger("api.routes.proxy_routes").setLevel(logging.INFO)
+# Keep session import logging at DEBUG level for troubleshooting
+logging.getLogger("api.routes.session_routes").setLevel(logging.DEBUG)
+
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -98,8 +105,18 @@ async def session_export():
     return await export_session()
 
 @app.post("/api/session/import")
-async def session_import():
-    return await import_session()
+async def session_import(request: Request):
+    logger.debug("Received session import request")
+    try:
+        data = await request.json()
+        logger.debug(f"Parsed request body type: {type(data)}")
+        logger.debug(f"Request body content: {data}")
+        result = await import_session(data)
+        logger.debug("Session import completed successfully")
+        return result
+    except Exception as e:
+        logger.error(f"Error in session import endpoint: {str(e)}")
+        raise ValueError(f"Failed to process import request: {str(e)}")
 
 @app.post("/api/repeater/send")
 async def repeater_send(request_data: RepeaterRequest):
@@ -111,5 +128,6 @@ if __name__ == "__main__":
         app,
         host=app_settings.api_host,
         port=app_settings.api_port,
-        log_level="debug"
+        log_level="info",  # Set uvicorn log level to info
+        access_log=False  # Disable access logs
     )
