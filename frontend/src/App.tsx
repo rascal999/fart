@@ -90,9 +90,20 @@ const AppContent: React.FC = () => {
       <AppBar position="static">
         <Container maxWidth={false}>
           <Box sx={{ display: 'flex', alignItems: 'center', py: 1 }}>
-            <Typography variant="h6" component="div" sx={{ mr: 4 }}>
-              FART Proxy
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mr: 4 }}>
+              <img 
+                src="/favicon.webp" 
+                alt="FART Proxy Logo" 
+                style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  marginRight: '8px'
+                }} 
+              />
+              <Typography variant="h6" component="div">
+                FART Proxy
+              </Typography>
+            </Box>
             <Tabs 
               value={location.pathname}
               onChange={(_, newValue) => navigate(newValue)}

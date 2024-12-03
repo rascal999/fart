@@ -1,5 +1,7 @@
 # FART (Fast API Request Tool) Proxy
 
+![FART Proxy Screenshot](frontend/public/screenshot.png)
+
 FART is a Man-in-the-Middle (MITM) proxy tool built with mitmproxy as the backend and React.js for the frontend web UI. It provides a user-friendly interface for intercepting, analyzing, and modifying HTTP/HTTPS traffic.
 
 ## Features
