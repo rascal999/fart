@@ -10,6 +10,7 @@ export interface ProxyLog {
     url: string;
     headers: Record<string, string>;
     content: string | null;
+    raw_request?: string;  // Added raw_request field
   };
   response?: {
     status_code: number;

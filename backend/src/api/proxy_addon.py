@@ -69,17 +69,43 @@ class ProxyAddon:
             return 1
         return max(log.get('id', 0) for log in history) + 1
 
+    def _get_raw_request(self, flow):
+        """Get raw request details preserving exact format."""
+        # Extract path and host
+        path = flow.request.path
+        if flow.request.query:
+            path = path + "?" + flow.request.query
+        host = flow.request.pretty_host
+            
+        # Start with request line
+        raw_request = f"GET {path} HTTP/2\n"
+        
+        # Add Host header first
+        raw_request += f"Host: {host}\n"
+        
+        # Add remaining headers in original order, excluding Host
+        for header_name, header_value in flow.request.headers.fields:
+            name = header_name.decode('utf-8')
+            if name.lower() != 'host':  # Skip Host header as we already added it
+                raw_request += f"{name}: {header_value.decode('utf-8')}\n"
+        
+        # Add blank line at the end
+        raw_request += "\n"
+            
+        return raw_request
+
     def request(self, flow):
         """Handle request."""
         try:
             logger.debug(f"Processing request: {flow.request.method} {flow.request.url}")
-            # Store request details in flow for later use
+            # Store complete raw request details in flow
             flow.request_details = {
                 "method": flow.request.method,
                 "url": flow.request.url,
+                "raw_request": self._get_raw_request(flow),
                 "headers": dict(flow.request.headers),
                 "content": flow.request.content.decode('utf-8', 'replace') if flow.request.content else None,
-                "timestamp": datetime.now().isoformat()  # Store timestamp when request is made
+                "timestamp": datetime.now().isoformat()
             }
             logger.debug("Successfully stored request details in flow")
         except Exception as e:
@@ -97,9 +123,10 @@ class ProxyAddon:
                 request_details = {
                     "method": flow.request.method,
                     "url": flow.request.url,
+                    "raw_request": self._get_raw_request(flow),
                     "headers": dict(flow.request.headers),
                     "content": flow.request.content.decode('utf-8', 'replace') if flow.request.content else None,
-                    "timestamp": datetime.now().isoformat()  # Fallback timestamp
+                    "timestamp": datetime.now().isoformat()
                 }
             
             # Load current history
@@ -136,7 +163,7 @@ class ProxyAddon:
             # Create entry for the request/response pair
             entry = {
                 "id": self._get_next_id(history),
-                "timestamp": request_details["timestamp"],  # Use timestamp from request
+                "timestamp": request_details["timestamp"],
                 "method": request_details["method"],
                 "url": request_details["url"],
                 "status": flow.response.status_code,
@@ -144,6 +171,7 @@ class ProxyAddon:
                 "request": {
                     "method": request_details["method"],
                     "url": request_details["url"],
+                    "raw_request": request_details["raw_request"],
                     "headers": request_details["headers"],
                     "content": request_details["content"]
                 },

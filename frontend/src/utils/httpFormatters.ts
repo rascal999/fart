@@ -10,6 +10,12 @@ const formatHeaders = (headers: Record<string, string> | undefined | null): stri
 export const formatRequest = (log: ProxyLog): string => {
   if (!log) return '';
   
+  // If we have a raw request, use it directly
+  if (log.request?.raw_request) {
+    return log.request.raw_request;
+  }
+  
+  // Fallback to constructing the request (for backward compatibility)
   const parts = [];
   
   // Request line
